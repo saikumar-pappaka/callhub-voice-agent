@@ -1,12 +1,14 @@
 import json
 import logging
 import asyncio
+import time
 from typing import Dict, Any, Optional, Union
 import websockets
 from websockets.exceptions import ConnectionClosed
 from fastapi import WebSocket
 from models import Session, FunctionCallItem
 from function_handlers import functions
+from constants import SYSTEM_PROMPT
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -187,7 +189,6 @@ async def handle_twilio_message(data: str) -> None:
                 "type": "input_audio_buffer.append",
                 "audio": msg.get("media", {}).get("payload")
             })
-    
     elif event_type == "close":
         await close_all_connections()
 
@@ -228,8 +229,8 @@ async def try_connect_model() -> None:
             }
         )
         
-        # Configure the model
-        config = _session.saved_config or {}
+        # Configure the model with complete settings directly in code
+        # We're not using frontend config since it's not available
         await json_send(_session.model_conn, {
             "type": "session.update",
             "session": {
@@ -239,9 +240,16 @@ async def try_connect_model() -> None:
                 "input_audio_transcription": {"model": "whisper-1"},
                 "input_audio_format": "g711_ulaw",
                 "output_audio_format": "g711_ulaw",
-                **config,
+                "input_audio_transcription": {
+                    "model": "whisper-1",
+                    "language": "en"
+                },
+                "tools": [f.schema.dict() for f in functions],  # Include external functions/tools
+                "temperature": 0.5,  # Reduced for more deterministic behavior in speech
+                "instructions": SYSTEM_PROMPT,  # Core instruction to the assistant
             }
         })
+
         
         # Start listener task for model messages
         asyncio.create_task(handle_model_connection())
@@ -303,18 +311,15 @@ async def handle_model_message(data: str) -> None:
             
             if event.get("item_id"):
                 _session.last_assistant_item = event.get("item_id")
-            
             await json_send(_session.twilio_conn, {
                 "event": "media",
                 "streamSid": _session.stream_sid,
                 "media": {"payload": event.get("delta")}
             })
-            
             await json_send(_session.twilio_conn, {
                 "event": "mark",
                 "streamSid": _session.stream_sid
             })
-    
     elif event_type == "response.output_item.done":
         item = event.get("item", {})
         if item.get("type") == "function_call":
@@ -384,14 +389,9 @@ async def close_model() -> None:
 
 async def close_all_connections() -> None:
     """Close all active connections."""
-    if _session.twilio_conn:
-        await _session.twilio_conn.close()
-    
-    if _session.model_conn:
-        await _session.model_conn.close()
-    
-    if _session.frontend_conn:
-        await _session.frontend_conn.close()
+    await cleanup_connection(_session.twilio_conn)
+    await cleanup_connection(_session.model_conn)
+    await cleanup_connection(_session.frontend_conn)
 
 
 async def cleanup_connection(ws: Optional[Union[WebSocket, websockets.WebSocketClientProtocol]]) -> None:
@@ -404,7 +404,15 @@ async def cleanup_connection(ws: Optional[Union[WebSocket, websockets.WebSocketC
         return
     
     try:
-        await ws.close()
+        # Check if the websocket is still open before closing
+        if isinstance(ws, WebSocket):
+            # For FastAPI WebSockets
+            if ws.client_state.name == "CONNECTED":
+                await ws.close()
+        else:
+            # For websockets.WebSocketClientProtocol
+            if ws.open:
+                await ws.close()
     except Exception as e:
         logger.error(f"Error closing WebSocket: {e}")
 
