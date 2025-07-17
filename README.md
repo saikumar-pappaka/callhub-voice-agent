@@ -1,129 +1,121 @@
-# FastAPI OpenAI Realtime WebSocket Server for Twilio
+# FastAPI WebSocket Server with VB System Integration
 
-This is a Python FastAPI implementation of the TypeScript WebSocket server that bridges between Twilio phone calls and OpenAI's Realtime API. It maintains API compatibility with the original TypeScript version.
+A FastAPI-based WebSocket server for OpenAI's Realtime API that integrates with the VB System database. This server provides voice agent capabilities with database integration for campaign management, contact handling, and survey responses.
+
+## Project Structure
+
+```
+├── app/
+│   ├── api/             # API endpoints
+│   ├── core/            # Core functionality
+│   ├── db/              # Database access layer
+│   ├── models/          # Data models
+│   ├── services/        # Business logic services
+│   └── utils/           # Utility functions
+├── main.py              # Application entry point
+├── pyproject.toml       # Project metadata
+├── requirements.txt     # Dependencies
+└── twiml.xml            # Twilio TwiML template
+```
 
 ## Features
 
-- **WebSocket Server**: Handles both Twilio and frontend connections
-- **OpenAI Realtime API Integration**: Streams audio between Twilio and OpenAI
-- **Function Calling**: Supports OpenAI function calling with extensible handlers
-- **Session Management**: Maintains state across WebSocket connections
-- **TwiML Support**: Generates TwiML responses for Twilio
+- WebSocket-based voice agent using OpenAI's Realtime API
+- Twilio integration for phone calls
+- PostgreSQL database integration via asyncpg
+- Layered architecture with separation of concerns:
+  - Data access layer (DAOs)
+  - Service layer
+  - API layer
 
-## Requirements
+## Setup
 
-- Python 3.8+
-- OpenAI API key with access to the Realtime API
-- Publicly accessible URL (for Twilio integration)
+1. Clone the repository
+2. Create a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-## Installation
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
 
-### 1. Clone the repository
+4. Create a `.env` file with the following variables:
+   ```
+   PORT=8081
+   OPENAI_API_KEY=your_openai_api_key
+   VB_DATABASE_URL=postgresql://user:password@host:port/database
+   ```
 
-```bash
-git clone <repository-url>
-cd fastapi-websocket-server
+## Running the Server
+
 ```
-
-### 2. Create a virtual environment
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Edit the `.env` file to add your OpenAI API key and public URL.
-
-## Usage
-
-### Starting the server
-
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8081
-```
-
-Or use the Python script directly:
-
-```bash
 python main.py
 ```
 
-### Endpoints
+Or use the entry point defined in pyproject.toml:
 
-- **GET `/`**: Server status information
-- **GET `/public-url`**: Returns configured public URL
-- **GET `/tools`**: Lists available function schemas
-- **ALL `/twiml`**: Returns TwiML template with WebSocket URL
-
-### WebSocket Endpoints
-
-- **WebSocket `/call`**: For Twilio Stream connections
-- **WebSocket `/logs`**: For frontend logging and configuration
-
-## Architecture
-
-The server uses a modular architecture with the following components:
-
-- **main.py**: FastAPI application with HTTP and WebSocket endpoints
-- **session_manager.py**: Manages WebSocket connections and message routing
-- **function_handlers.py**: Implements function calling mechanisms
-- **models.py**: Defines data models and validation using Pydantic
-
-## Function Calling
-
-To add new functions that can be called from OpenAI:
-
-1. Define a function schema in `function_handlers.py`
-2. Implement a handler function that returns a JSON string
-3. Register the function in the `functions` list
-
-Example:
-
-```python
-# Define schema
-new_function_schema = FunctionSchema(
-    name="my_function",
-    type="function",
-    description="Does something useful",
-    parameters=FunctionParameters(
-        type="object",
-        properties={
-            "param1": FunctionParameter(type="string"),
-        },
-        required=["param1"],
-    ),
-)
-
-# Implement handler
-async def my_function_handler(args: Any) -> str:
-    result = {"result": args.get("param1")}
-    return json.dumps(result)
-
-# Register function
-functions.append(FunctionHandler(schema=new_function_schema, handler=my_function_handler))
+```
+uvicorn main:app --host 0.0.0.0 --port 8081
 ```
 
-## Deployment
+## API Endpoints
 
-The server can be deployed on any platform that supports Python and WebSockets. For production:
+- `/`: Root endpoint with server status
+- `/public-url`: Returns the public URL for the server
+- `/tools`: Lists available function schemas
+- `/twiml`: Returns TwiML template for Twilio integration
+- `/call`: WebSocket endpoint for Twilio calls
+- `/logs`: WebSocket endpoint for frontend logging
 
-1. Use a production ASGI server like Uvicorn behind Nginx
-2. Set up SSL certificates for secure WebSocket connections
-3. Configure environment variables for production settings
-4. Use a process manager like Supervisor or systemd
+## VB System Integration
 
-## Compatibility
+The server integrates with VB System database to provide the following functionalities:
 
-This server maintains API compatibility with the original TypeScript implementation, allowing it to work with the existing frontend and Twilio integration. 
+1. Campaign Management:
+   - Retrieve campaign details
+   - Access AI agent configurations
+
+2. Contact Management:
+   - Get contact information
+   - Handle opt-outs
+   - Update contact status
+
+3. Survey Handling:
+   - Retrieve survey questions and choices
+   - Save survey responses
+
+4. Call Management:
+   - Record call dispositions
+   - Update subscriber statuses
+
+## Environment Variables
+
+- `PORT`: Server port (default: 8081)
+- `OPENAI_API_KEY`: OpenAI API key for Realtime API
+- `VB_DATABASE_URL`: PostgreSQL connection URL for VB System
+
+## Dependencies
+
+- fastapi
+- uvicorn
+- websockets
+- asyncpg
+- python-dotenv
+- pydantic
+
+## Development
+
+To run the server in development mode with auto-reload:
+
+```
+python main.py
+```
+
+To run tests:
+
+```
+pytest
+``` 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fastapi-websocket-server"
 version = "1.0.0"
-description = "FastAPI implementation of WebSocket server for OpenAI Realtime API with Twilio"
+description = "FastAPI implementation of WebSocket server for OpenAI Realtime API with VB System integration"
 readme = "README.md"
 authors = [
     {name = "Developer", email = "developer@example.com"}
@@ -30,6 +30,8 @@ dependencies = [
     "pydantic>=2.4.2",
     "python-multipart>=0.0.6",
     "orjson>=3.9.10",
+    "asyncpg>=0.29.0",
+    "dataclasses-json>=0.6.4",
 ]
 
 [project.optional-dependencies]
@@ -45,7 +47,7 @@ dev = [
 server = "main:run_server"
 
 [tool.setuptools]
-packages = ["fastapi-websocket-server"]
+packages = ["app"]
 
 [tool.black]
 line-length = 88

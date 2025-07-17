@@ -2,7 +2,7 @@
 <Response>
   <Say>Connected</Say>
   <Connect>
-    <Stream url="{{WS_URL}}" />
+    <Stream url="{{WS_URL}}" timeout="120" />
   </Connect>
   <Say>Disconnected</Say>
 </Response> 
